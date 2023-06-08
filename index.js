@@ -32,12 +32,50 @@ async function run() {
     await client.connect();
 
     const classCollection = client.db("languageDB").collection("classes")
+    const instructorCollection = client.db("languageDB").collection("instructors")
 
 
-    // classes apis
+    // classes related apis
     app.get('/popular-classes', async(req, res) => {
         const result = await classCollection.find().sort({ students: -1 }).toArray();
         res.send(result)
+    })
+
+    // instructors related apis
+    app.get('/popular-instructors', async(req, res) => {
+      const pipeline = [
+        {
+          $lookup: {
+            from: 'classes',
+            localField: 'email',
+            foreignField: 'instructorEmail',
+            as: 'classes'
+          }
+        },
+        {
+          $addFields: {
+            totalStudents: { $sum: '$classes.students' }
+          }
+        },
+        {
+          $sort: { totalStudents: -1 }
+        },
+        {
+          $limit: 6
+        },
+        {
+          $project: {
+            _id: 0,
+            name: 1,
+            email: 1,
+            image: 1,
+            totalStudents: 1
+          }
+        }
+      ];
+
+      const result = await instructorCollection.aggregate(pipeline).toArray()
+      res.send(result)
     })
 
 
