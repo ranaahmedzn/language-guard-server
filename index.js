@@ -51,6 +51,7 @@ async function run() {
     const classCollection = client.db("languageDB").collection("classes")
     const instructorCollection = client.db("languageDB").collection("instructors")
     const reviewCollection = client.db("languageDB").collection("reviews")
+    const userCollection = client.db("languageDB").collection("users")
 
 
     // jwt api
@@ -119,6 +120,21 @@ async function run() {
     // review api
     app.get('/reviews', async(req, res) => {
       const result = await reviewCollection.find().toArray()
+      res.send(result)
+    })
+
+    // users api
+    app.post('/users', async(req, res) => {
+      const user = req.body;
+      console.log(user)
+      const query = { email: user.email };
+
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "user already exists" });
+      }
+
+      const result = await userCollection.insertOne(user)
       res.send(result)
     })
 
