@@ -33,11 +33,12 @@ async function run() {
 
     const classCollection = client.db("languageDB").collection("classes")
     const instructorCollection = client.db("languageDB").collection("instructors")
+    const reviewCollection = client.db("languageDB").collection("reviews")
 
 
     // classes related apis
     app.get('/popular-classes', async(req, res) => {
-        const result = await classCollection.find().sort({ students: -1 }).toArray();
+        const result = await classCollection.find().sort({ students: -1 }).limit(6).toArray();
         res.send(result)
     })
 
@@ -75,6 +76,17 @@ async function run() {
       ];
 
       const result = await instructorCollection.aggregate(pipeline).toArray()
+      res.send(result)
+    })
+
+    app.get('/instructors', async(req, res) => {
+      const result = await instructorCollection.find().toArray()
+      res.send(result)
+    })
+
+    // review api
+    app.get('/reviews', async(req, res) => {
+      const result = await reviewCollection.find().toArray()
       res.send(result)
     })
 
