@@ -52,6 +52,7 @@ async function run() {
     const instructorCollection = client.db("languageDB").collection("instructors")
     const reviewCollection = client.db("languageDB").collection("reviews")
     const userCollection = client.db("languageDB").collection("users")
+    const bookingCollection = client.db("languageDB").collection("bookings")
 
 
     // jwt api
@@ -62,6 +63,32 @@ async function run() {
       });
       res.send({ token });
     });
+
+    // middleware to verify student, admin or instructor
+    const verifyStudent = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      if (user?.role !== "student") {
+        return res.status(403).send({ error: true, message: "forbidden access" });
+      }
+      next();
+    };
+
+    // users api
+    app.post('/users', async(req, res) => {
+      const user = req.body;
+      console.log(user)
+      const query = { email: user.email };
+
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "user already exists" });
+      }
+
+      const result = await userCollection.insertOne(user)
+      res.send(result)
+    })
 
     // classes related apis
     app.get('/classes', async(req, res) => {
@@ -123,18 +150,21 @@ async function run() {
       res.send(result)
     })
 
-    // users api
-    app.post('/users', async(req, res) => {
-      const user = req.body;
-      console.log(user)
-      const query = { email: user.email };
+    // bookings api
+    app.get('/bookings', verifyJWT, verifyStudent, async(req, res) => {
+      const email = req.query.email;
 
-      const existingUser = await userCollection.findOne(query);
-      if (existingUser) {
-        return res.send({ message: "user already exists" });
+      if(email !== req.decoded.email){
+        return res.status(401).send({error: true, message: 'unauthorized access'})
       }
+      const query = {studentEmail: email}
+      const result = await bookingCollection.find(query).toArray()
+      res.send(result)
+    })
 
-      const result = await userCollection.insertOne(user)
+    app.post('/bookings', async(req, res) => {
+      const selectedClass = req.body;
+      const result = await bookingCollection.insertOne(selectedClass)
       res.send(result)
     })
 
