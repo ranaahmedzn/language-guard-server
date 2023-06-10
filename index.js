@@ -19,13 +19,14 @@ const verifyJWT = (req, res, next) => {
     return res.status(401).send({error: true, message: 'unauthorized access'})
   }
   const token = authorization.split(' ')[1]
-  console.log(token)
+  // console.log(token)
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
+      console.log("Inside jwt verify", err)
       return res.status(403).send({ error: true, message: "forbidden access" });
     }
-    console.log(err)
     req.decoded = decoded;
+    console.log(decoded)
     next();
   });
 }
@@ -115,19 +116,20 @@ async function run() {
 
     app.get("/users/role/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
+      console.log(req.decoded.email, email)
 
       if (email !== req.decoded.email) {
-        return res.send({student: false, instructor: false, admin: false});
+        return res.send({isStudent: false, isInstructor: false, isAdmin: false})
       }
 
       const query = { email: email };
       const user = await userCollection.findOne(query);
 
-      const student = user?.role === "student"
-      const instructor = user?.role === "instructor" 
-      const admin = user?.role === "admin" 
+      const isStudent = user?.role === "student"
+      const isInstructor = user?.role === "instructor" 
+      const isAdmin = user?.role === "admin" 
 
-      res.send({student, instructor, admin});
+      res.send({isStudent, isInstructor, isAdmin});
     });
 
     // classes related apis
@@ -177,6 +179,32 @@ async function run() {
       console.log(newClass)
 
       const result = await classCollection.insertOne(newClass)
+      res.send(result)
+    })
+
+    app.patch('/classes/:id', verifyJWT, verifyAdmin, async(req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+
+      const updatedClass = {
+        $set: {
+          status: 'approved'
+        },
+      };
+      const result = await classCollection.updateOne(filter, updatedClass)
+      res.send(result)
+    })
+
+    app.put('/classes/:id', verifyJWT, verifyAdmin, async(req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+
+      const updatedClass = {
+        $set: {
+          status: 'denied'
+        },
+      };
+      const result = await classCollection.updateOne(filter, updatedClass)
       res.send(result)
     })
 
@@ -230,10 +258,10 @@ async function run() {
     })
 
     // bookings api
-    app.get('/bookings', verifyJWT, verifyStudent, async(req, res) => {
-      const email = req.decoded.email;
+    app.get('/bookings', verifyJWT, async(req, res) => {
+      const email = req.query.email;
 
-      if(email !== req.query.email){
+      if(email !== req.decoded.email){
         return res.status(401).send({error: true, message: 'unauthorized access'})
       }
       const query = {studentEmail: email}
