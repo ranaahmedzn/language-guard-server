@@ -1,7 +1,7 @@
 const express = require('express')
 const cors = require('cors')
 const jwt = require('jsonwebtoken');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 
 const app = express()
@@ -150,6 +150,7 @@ async function run() {
       res.send(result)
     })
 
+    //TODO: Have to use verifyJWT and verifyStudent in all api
     // bookings api
     app.get('/bookings', verifyJWT, verifyStudent, async(req, res) => {
       const email = req.query.email;
@@ -162,9 +163,25 @@ async function run() {
       res.send(result)
     })
 
-    app.post('/bookings', async(req, res) => {
+    app.get('/bookings/:id', verifyJWT, verifyStudent, async(req, res) => {
+      const id = req.params.id;
+      console.log(id) 
+      const query = {_id: new ObjectId(id)}
+      const result = await bookingCollection.findOne(query)
+      res.send(result)
+    })
+
+    app.post('/bookings', verifyJWT, verifyStudent, async(req, res) => {
       const selectedClass = req.body;
       const result = await bookingCollection.insertOne(selectedClass)
+      res.send(result)
+    })
+
+    app.delete('/bookings/:id', verifyJWT, verifyStudent, async(req, res) => {
+      const id = req.params.id;
+      console.log(id) 
+      const query = {_id: new ObjectId(id)}
+      const result = await bookingCollection.deleteOne(query)
       res.send(result)
     })
 
