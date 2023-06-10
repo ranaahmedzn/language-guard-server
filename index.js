@@ -6,6 +6,7 @@ require('dotenv').config()
 
 const app = express()
 const port = process.env.PORT || 5000;
+const stripe = require("stripe")(process.env.PAYMENT_SK)
 
 // middleware
 app.use(cors())
@@ -18,11 +19,12 @@ const verifyJWT = (req, res, next) => {
     return res.status(401).send({error: true, message: 'unauthorized access'})
   }
   const token = authorization.split(' ')[1]
-
+  console.log(token)
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
       return res.status(403).send({ error: true, message: "forbidden access" });
     }
+    console.log(err)
     req.decoded = decoded;
     next();
   });
@@ -53,6 +55,7 @@ async function run() {
     const reviewCollection = client.db("languageDB").collection("reviews")
     const userCollection = client.db("languageDB").collection("users")
     const bookingCollection = client.db("languageDB").collection("bookings")
+    const paymentCollection = client.db("languageDB").collection("payments")
 
 
     // jwt api
@@ -78,7 +81,7 @@ async function run() {
     // users api
     app.post('/users', async(req, res) => {
       const user = req.body;
-      console.log(user)
+      // console.log(user)
       const query = { email: user.email };
 
       const existingUser = await userCollection.findOne(query);
@@ -150,12 +153,11 @@ async function run() {
       res.send(result)
     })
 
-    //TODO: Have to use verifyJWT and verifyStudent in all api
     // bookings api
     app.get('/bookings', verifyJWT, verifyStudent, async(req, res) => {
-      const email = req.query.email;
+      const email = req.decoded.email;
 
-      if(email !== req.decoded.email){
+      if(email !== req.query.email){
         return res.status(401).send({error: true, message: 'unauthorized access'})
       }
       const query = {studentEmail: email}
@@ -165,7 +167,6 @@ async function run() {
 
     app.get('/bookings/:id', verifyJWT, verifyStudent, async(req, res) => {
       const id = req.params.id;
-      console.log(id) 
       const query = {_id: new ObjectId(id)}
       const result = await bookingCollection.findOne(query)
       res.send(result)
@@ -179,12 +180,46 @@ async function run() {
 
     app.delete('/bookings/:id', verifyJWT, verifyStudent, async(req, res) => {
       const id = req.params.id;
-      console.log(id) 
       const query = {_id: new ObjectId(id)}
       const result = await bookingCollection.deleteOne(query)
       res.send(result)
     })
 
+    // payment intent api
+    app.post("/create-payment-intent", verifyJWT, verifyStudent, async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100)
+    
+      // Create a PaymentIntent with the order amount and currency
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+    
+      res.send({ clientSecret: paymentIntent.client_secret });
+    });
+
+     // payment related apis
+     app.post("/payments", verifyJWT, async (req, res) => {
+      const payment = req.body;
+      const insertedResult = await paymentCollection.insertOne(payment);
+
+      const query = {_id: new ObjectId(payment.bookingId)}
+      const deletedResult = await bookingCollection.deleteOne(query);
+
+      const filter = {_id: new ObjectId(payment.classId)}
+      const selectedClass = await classCollection.findOne(filter)
+
+      const updatedClass = {
+        $set: {
+          availableSeats: `${selectedClass.availableSeats - 1}`
+        },
+      };
+      const updatedResult = await classCollection.updateOne(filter, updatedClass)
+
+      res.send({ insertedResult, deletedResult, updatedResult});
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
