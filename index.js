@@ -159,6 +159,27 @@ async function run() {
       res.send(enrolledClasses);
     })
 
+    //TODO: verifyJWT and verifyInstructor
+    app.get('/classes/:email', verifyJWT, async(req, res) => {
+      const email = req.decoded.email;
+
+      if(email !== req.params.email){
+        return res.status(401).send({error: true, message: 'unauthorized access'})
+      }
+
+      const query = {instructorEmail: email}
+      const result = await classCollection.find(query).toArray()
+      res.send(result)
+    })
+
+    app.post('/classes', verifyJWT, async(req, res) => {
+      const newClass = req.body;
+      console.log(newClass)
+
+      const result = await classCollection.insertOne(newClass)
+      res.send(result)
+    })
+
     // instructors related apis
     app.get('/instructors', async(req, res) => {
       const result = await instructorCollection.find().toArray()
