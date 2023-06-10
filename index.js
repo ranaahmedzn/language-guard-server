@@ -104,6 +104,24 @@ async function run() {
         res.send(result)
     })
 
+    app.get('/enrolled-classes', verifyJWT, verifyStudent, async(req, res) => {
+      const email = req.decoded.email;
+
+      if(email !== req.query.email){
+        return res.status(401).send({error: true, message: 'unauthorized access'})
+      }
+
+      const query = {email: email}
+
+      const userPayments = await paymentCollection.find(query).toArray();
+
+      const paymentsClassIds = userPayments.map(payment => new ObjectId(payment.classId));
+
+      const enrolledClasses = await classCollection.find({ _id: { $in: paymentsClassIds } }).toArray();
+
+      res.send(enrolledClasses);
+    })
+
     // instructors related apis
     app.get('/instructors', async(req, res) => {
       const result = await instructorCollection.find().toArray()
@@ -220,6 +238,18 @@ async function run() {
 
       res.send({ insertedResult, deletedResult, updatedResult});
     });
+
+    app.get("/payments", verifyJWT, verifyStudent, async(req, res) => {
+      const email = req.decoded.email;
+
+      if(email !== req.query.email){
+        return res.status(401).send({error: true, message: 'unauthorized access'})
+      }
+
+      const query = {email: email}
+      const payments = await paymentCollection.find(query).sort({date: -1}).toArray();
+      res.send(payments);
+    })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
