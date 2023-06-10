@@ -78,6 +78,26 @@ async function run() {
       next();
     };
 
+    const verifyInstructor = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      if (user?.role !== "instructor") {
+        return res.status(403).send({ error: true, message: "forbidden access" });
+      }
+      next();
+    };
+
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      if (user?.role !== "admin") {
+        return res.status(403).send({ error: true, message: "forbidden access" });
+      }
+      next();
+    };
+
     // users api
     app.post('/users', async(req, res) => {
       const user = req.body;
@@ -92,6 +112,23 @@ async function run() {
       const result = await userCollection.insertOne(user)
       res.send(result)
     })
+
+    app.get("/users/role/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+
+      if (email !== req.decoded.email) {
+        return res.send({student: false, instructor: false, admin: false});
+      }
+
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+
+      const student = user?.role === "student"
+      const instructor = user?.role === "instructor" 
+      const admin = user?.role === "admin" 
+
+      res.send({student, instructor, admin});
+    });
 
     // classes related apis
     app.get('/classes', async(req, res) => {
