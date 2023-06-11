@@ -100,6 +100,11 @@ async function run() {
     };
 
     // users api
+    app.get('/users', verifyJWT, verifyAdmin, async(req, res) => {
+      const result = await userCollection.find().toArray()
+      res.send(result);
+    })
+
     app.post('/users', async(req, res) => {
       const user = req.body;
       // console.log(user)
@@ -131,6 +136,32 @@ async function run() {
 
       res.send({isStudent, isInstructor, isAdmin});
     });
+
+    app.patch('/users/:id', verifyJWT, verifyAdmin, async(req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+
+      const updatedClass = {
+        $set: {
+          role: 'instructor'
+        },
+      };
+      const result = await userCollection.updateOne(filter, updatedClass)
+      res.send(result)
+    })
+
+    app.put('/users/:id', verifyJWT, verifyAdmin, async(req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+
+      const updatedClass = {
+        $set: {
+          role: 'admin'
+        },
+      };
+      const result = await userCollection.updateOne(filter, updatedClass)
+      res.send(result)
+    })
 
     // classes related apis
     app.get('/classes', async(req, res) => {
@@ -317,7 +348,8 @@ async function run() {
 
       const updatedClass = {
         $set: {
-          availableSeats: `${selectedClass.availableSeats - 1}`
+          availableSeats: `${selectedClass.availableSeats - 1}`,
+          students: `${selectedClass.students + 1}`
         },
       };
       const updatedResult = await classCollection.updateOne(filter, updatedClass)
