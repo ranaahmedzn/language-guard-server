@@ -299,7 +299,7 @@ async function run() {
         },
         {
           $project: {
-            _id: 0,
+            _id: 1,
             name: 1,
             email: 1,
             image: 1,
