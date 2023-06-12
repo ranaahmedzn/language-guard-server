@@ -22,11 +22,10 @@ const verifyJWT = (req, res, next) => {
   // console.log(token)
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
-      console.log("Inside jwt verify", err)
       return res.status(403).send({ error: true, message: "forbidden access" });
     }
     req.decoded = decoded;
-    console.log(decoded)
+    // console.log(decoded)
     next();
   });
 }
@@ -121,7 +120,7 @@ async function run() {
 
     app.get("/users/role/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
-      console.log(req.decoded.email, email)
+      // console.log(req.decoded.email, email)
 
       if (email !== req.decoded.email) {
         return res.send({isStudent: false, isInstructor: false, isAdmin: false})
@@ -165,12 +164,12 @@ async function run() {
 
     // classes related apis
     app.get('/classes', async(req, res) => {
-        const result = await classCollection.find().toArray();
+        const result = await classCollection.find({status: "approved"}).toArray();
         res.send(result)
     })
 
     app.get('/popular-classes', async(req, res) => {
-        const result = await classCollection.find().sort({ students: -1 }).limit(6).toArray();
+        const result = await classCollection.find().sort({students: -1}).limit(6).toArray();
         res.send(result)
     })
 
@@ -192,7 +191,6 @@ async function run() {
       res.send(enrolledClasses);
     })
 
-    //TODO: verifyJWT and verifyInstructor
     app.get('/classes/:email', verifyJWT, async(req, res) => {
       const email = req.decoded.email;
 
@@ -207,7 +205,7 @@ async function run() {
 
     app.post('/classes', verifyJWT, async(req, res) => {
       const newClass = req.body;
-      console.log(newClass)
+      // console.log(newClass)
 
       const result = await classCollection.insertOne(newClass)
       res.send(result)
@@ -218,7 +216,7 @@ async function run() {
       const id = req.params.id;
       const updatedClass = req.body;
 
-      console.log(updatedClass)
+      // console.log(updatedClass)
       const filter = {_id: new ObjectId(id)}
 
       const updatedDoc = {
@@ -234,7 +232,7 @@ async function run() {
     app.patch('/classes/feedback/:id', verifyJWT, verifyAdmin, async(req, res) => {
       const id = req.params.id;
       const {feedback} = req.body;
-      console.log(feedback);
+      // console.log(feedback);
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
         $set: {
