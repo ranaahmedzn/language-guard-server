@@ -213,6 +213,39 @@ async function run() {
       res.send(result)
     })
 
+    // update class by instructor
+    app.patch('/classes/update/:id', verifyJWT, async(req, res) => {
+      const id = req.params.id;
+      const updatedClass = req.body;
+
+      console.log(updatedClass)
+      const filter = {_id: new ObjectId(id)}
+
+      const updatedDoc = {
+        $set: {
+          ...updatedClass
+        },
+      };
+      const result = await classCollection.updateOne(filter, updatedDoc)
+      res.send(result)
+    })
+
+    // update class by the admin
+    app.patch('/classes/feedback/:id', verifyJWT, verifyAdmin, async(req, res) => {
+      const id = req.params.id;
+      const {feedback} = req.body;
+      console.log(feedback);
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          feedback: feedback,
+        },
+      };
+
+      const result = await classCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    })
+
     app.patch('/classes/:id', verifyJWT, verifyAdmin, async(req, res) => {
       const id = req.params.id;
       const filter = {_id: new ObjectId(id)}
@@ -284,7 +317,13 @@ async function run() {
 
     // review api
     app.get('/reviews', async(req, res) => {
-      const result = await reviewCollection.find().toArray()
+      const result = await reviewCollection.find().sort({date: -1}).toArray()
+      res.send(result)
+    })
+
+    app.post('/reviews', verifyJWT, async(req, res) => {
+      const feedback = req.body;
+      const result = await reviewCollection.insertOne(feedback)
       res.send(result)
     })
 
